@@ -48,6 +48,10 @@ export default {
       type: String,
       default: '',
     },
+    karate: {
+      type: String, 
+      default: ''
+    },
     options: {
       type: Object,
       default: () => ({}),
@@ -56,20 +60,29 @@ export default {
 
   data() {
     return {
-      activeTab: headlessTypes.PLAYWRIGHT,
-      tabs: [headlessTypes.PLAYWRIGHT, headlessTypes.PUPPETEER],
+      activeTab: headlessTypes.KARATE,
+      tabs: [headlessTypes.KARATE, headlessTypes.PLAYWRIGHT, headlessTypes.PUPPETEER],
     }
   },
 
   computed: {
     code() {
-      return this.activeTab === headlessTypes.PUPPETEER ? this.puppeteer : this.playwright
+      if (this.activeTab === headlessTypes.PUPPETEER) {
+        return this.puppeteer
+      } else if (this.activeTab === headlessTypes.PLAYWRIGHT) {
+        return this.playwright
+      } else {
+        return this.karate
+      }
     },
   },
 
   mounted() {
-    if (!this.options?.code?.showPlaywrightFirst) {
-      this.activeTab = headlessTypes.PUPPETEER
+    if (this.options?.code?.showPlaywrightFirst) {
+      this.activeTab = headlessTypes.PLAYWRIGHT
+      this.tabs = this.tabs.reverse()
+    } else if (this.options?.code?.showKarateFirst) {
+      this.activeTab = headlessTypes.KARATE
       this.tabs = this.tabs.reverse()
     }
 

@@ -1,37 +1,36 @@
-import Block from '@/modules/code-generator/block'
 import { headlessActions, eventsToRecord } from '@/modules/code-generator/constants'
+import Block from '@/modules/code-generator/block'
+import BaseGenerator from '@/modules/code-generator/base-generator'
 
-export const defaults = {
-  wrapAsync: false,
-  headless: false,
-  waitForNavigation: false,
-  waitForSelectorOnClick: true,
-  blankLinesBetweenBlocks: false,
-  dataAttribute: '',
-  showPlaywrightFirst: false,
-  showKarateFirst: true,
-  keyCode: 9,
-}
+const featureName = `Feature:\n`
 
-export default class BaseGenerator {
+const header = `Scenario: Chrome Recorded Scenario\n`
+
+const footer = ``
+
+const wrappedHeader = `${header}\n`
+
+const wrappedFooter = `${footer}`
+
+export default class KarateCodeGenerator extends BaseGenerator {
   constructor(options) {
-    this._options = Object.assign(defaults, options)
-    this._blocks = []
-    this._frame = 'page'
-    this._frameId = 0
-    this._allFrames = {}
-    this._screenshotCounter = 0
-
-    this._hasNavigation = false
+    super(options)
+    this._header = header
+    this._wrappedHeader = wrappedHeader
+    this._footer = footer
+    this._wrappedFooter = wrappedFooter
   }
 
-  generate() {
-    throw new Error('Not implemented.')
+  generate(events) {
+    return featureName + this._getHeader() + this._parseEvents(events) + this._getFooter()
   }
+
+  // from here onwards it was in the CodeGenerator.js
 
   _getHeader() {
+    console.debug(this._options)
     let hdr = this._options.wrapAsync ? this._wrappedHeader : this._header
-    hdr = this._options.headless ? hdr : hdr?.replace('launch()', 'launch({ headless: false })')
+    // hdr = this._options.headless ? hdr : hdr.replace('launch()', 'launch({ headless: false })')
     return hdr
   }
 
@@ -40,13 +39,14 @@ export default class BaseGenerator {
   }
 
   _parseEvents(events) {
+    console.debug(`generating code for ${events ? events.length : 0} events`)
     let result = ''
 
     if (!events) return result
 
-    for (let i = 0; i < events.length; i++) {
-      const { action, selector, value, href, keyCode, tagName, frameId, frameUrl } = events[i]
-      const escapedSelector = selector ? selector?.replace(/\\/g, '\\\\') : selector
+    for (let event of events) {
+      const { action, selector, value, href, keyCode, tagName, frameId, frameUrl } = event
+      const escapedSelector = selector ? selector.replace(/\\/g, '\\\\') : selector
 
       // we need to keep a handle on what frames events originate from
       this._setFrames(frameId, frameUrl)
@@ -81,14 +81,13 @@ export default class BaseGenerator {
       }
     }
 
-    if (this._hasNavigation && this._options.waitForNavigation) {
-      const block = new Block(this._frameId, {
-        type: headlessActions.NAVIGATION_PROMISE,
-        value: 'const navigationPromise = page.waitForNavigation()',
-      })
+    /* if (this._hasNavigation && this._options.waitForNavigation) {
+      console.debug('Adding navigationPromise declaration')
+      const block = new Block(this._frameId, { type: headlessActions.NAVIGATION_PROMISE, value: 'const navigationPromise = page.waitForNavigation()' })
       this._blocks.unshift(block)
-    }
+    } */
 
+    console.debug('post processing blocks:', this._blocks)
     this._postProcess()
 
     const indent = this._options.wrapAsync ? '  ' : ''
@@ -130,7 +129,7 @@ export default class BaseGenerator {
     const block = new Block(this._frameId)
     block.addLine({
       type: eventsToRecord.KEYDOWN,
-      value: `await ${this._frame}.type('${selector}', '${this._escapeUserInput(value)}')`,
+      value: `* input('${selector}', '${this._escapeUserInput(value)}')`,
     })
     return block
   }
@@ -138,34 +137,29 @@ export default class BaseGenerator {
   _handleClick(selector) {
     const block = new Block(this._frameId)
     if (this._options.waitForSelectorOnClick) {
-      block.addLine({
-        type: eventsToRecord.CLICK,
-        value: `await ${this._frame}.waitForSelector('${selector}')`,
-      })
+      block.addLine({ type: eventsToRecord.CLICK, value: `* waitFor('${selector}').click()` })
+    } else {
+      block.addLine({ type: eventsToRecord.CLICK, value: `* click('${selector}')` })
     }
-    block.addLine({
-      type: eventsToRecord.CLICK,
-      value: `await ${this._frame}.click('${selector}')`,
-    })
     return block
   }
 
   _handleChange(selector, value) {
     return new Block(this._frameId, {
-      type: eventsToRecord.CHANGE,
-      value: `await ${this._frame}.select('${selector}', '${value}')`,
+      type: headlessActions.CHANGE,
+      value: `* select('${selector}', '${value}')`,
     })
   }
 
   _handleGoto(href) {
-    return new Block(this._frameId, {
-      type: headlessActions.GOTO,
-      value: `await ${this._frame}.goto('${href}')`,
-    })
+    return new Block(this._frameId, { type: headlessActions.GOTO, value: `* driver '${href}'` })
   }
 
-  _handleViewport() {
-    throw new Error('Not implemented.')
+  _handleViewport(width, height) {
+    return new Block(this._frameId, {
+      type: headlessActions.VIEWPORT,
+      value: `* driver.dimensions = { x: 0, y: 0, width: ${width}, height: ${height} }`,
+    })
   }
 
   _handleScreenshot(value) {
@@ -190,7 +184,7 @@ await element${this._screenshotCounter}.screenshot({ path: 'screenshot_${this._s
     if (this._options.waitForNavigation) {
       block.addLine({
         type: headlessActions.NAVIGATION,
-        value: `await navigationPromise`,
+        value: `# page navigation, Karate will handle automatically`,
       })
     }
     return block
@@ -204,10 +198,7 @@ await element${this._screenshotCounter}.screenshot({ path: 'screenshot_${this._s
           const declaration = `const frame_${line.frameId} = frames.find(f => f.url() === '${
             this._allFrames[line.frameId]
           }')`
-          this._blocks[i].addLineToTop({
-            type: headlessActions.FRAME_SET,
-            value: declaration,
-          })
+          this._blocks[i].addLineToTop({ type: headlessActions.FRAME_SET, value: declaration })
           this._blocks[i].addLineToTop({
             type: headlessActions.FRAME_SET,
             value: 'let frames = await page.frames()',
@@ -230,6 +221,6 @@ await element${this._screenshotCounter}.screenshot({ path: 'screenshot_${this._s
   }
 
   _escapeUserInput(value) {
-    return value?.replace(/\\/g, '\\\\')?.replace(/'/g, "\\'")
+    return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
   }
 }

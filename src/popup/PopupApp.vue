@@ -16,6 +16,7 @@
 
     <Results
       :puppeteer="code"
+      :karate="codeForKarate"
       :playwright="codeForPlaywright"
       :options="options"
       v-if="showResultsTab"
@@ -101,6 +102,7 @@ export default {
       recording: [],
 
       code: '',
+      codeForKarate: '',
       codeForPlaywright: '',
       options: defaultOptions,
     }
@@ -163,6 +165,7 @@ export default {
     cleanUp() {
       this.recording = this.liveEvents = []
       this.code = ''
+      this.codeForKarate = ''
       this.codeForPlaywright = ''
       this.showResultsTab = this.isRecording = this.isPaused = false
       this.storeState()
@@ -171,10 +174,11 @@ export default {
     async generateCode() {
       const { recording, options = { code: {} } } = await storage.get(['recording', 'options'])
       const generator = new CodeGenerator(options.code)
-      const { puppeteer, playwright } = generator.generate(recording)
+      const { puppeteer, playwright, karate } = generator.generate(recording)
 
       this.recording = recording
       this.code = puppeteer
+      this.codeForKarate = karate
       this.codeForPlaywright = playwright
       this.showResultsTab = true
     },
@@ -189,6 +193,7 @@ export default {
         controls = {},
         code = '',
         options,
+        codeForKarate = '',
         codeForPlaywright = '',
         recording,
         clear,
@@ -198,6 +203,7 @@ export default {
         'controls',
         'code',
         'options',
+        'codeForKarate',
         'codeForPlaywright',
         'recording',
         'clear',
@@ -210,6 +216,7 @@ export default {
       this.options = options || defaultOptions
 
       this.code = code
+      this.codeForKarate = codeForKarate
       this.codeForPlaywright = codeForPlaywright
 
       if (this.isRecording) {
@@ -238,6 +245,7 @@ export default {
     storeState() {
       storage.set({
         code: this.code,
+        codeForKarate: this.codeForKarate,
         codeForPlaywright: this.codeForPlaywright,
         controls: { isRecording: this.isRecording, isPaused: this.isPaused },
       })
@@ -259,7 +267,13 @@ export default {
     },
 
     getCode() {
-      return this.currentResultTab === 'puppeteer' ? this.code : this.codeForPlaywright
+      if (this.currentResultTab === 'puppeteer') {
+        return this.code
+      } else if (this.currentResultTab === 'playwright') {
+        return this.codeForPlaywright
+      } else {
+        return this.codeForKarate
+      }
     },
 
     run() {

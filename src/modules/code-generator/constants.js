@@ -22,4 +22,5 @@ export const eventsToRecord = {
 export const headlessTypes = {
   PUPPETEER: 'puppeteer',
   PLAYWRIGHT: 'playwright',
+  KARATE: 'karate'
 }

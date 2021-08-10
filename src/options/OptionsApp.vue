@@ -87,6 +87,9 @@
         <Toggle v-model="options.code.blankLinesBetweenBlocks">
           Add blank lines between code blocks
         </Toggle>
+        <Toggle v-model="options.code.showKarateFirst">
+          Show Karate tab first
+        </Toggle>
         <Toggle v-model="options.code.showPlaywrightFirst">
           Show Playwright tab first
         </Toggle>
