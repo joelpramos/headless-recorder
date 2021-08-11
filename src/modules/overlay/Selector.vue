@@ -50,10 +50,17 @@ export default {
       this.dimensions.left = -window.scrollX
 
       let elem = e.target
+      this.moveElement(elem)
+    },
 
+    moveElement(elem) {
       while (elem && elem !== document.body) {
         this.dimensions.top += elem.offsetTop
         this.dimensions.left += elem.offsetLeft
+
+        // account for parent elements with scrolling
+        this.dimensions.top -= elem.scrollTop
+        this.dimensions.left -= elem.scrollLeft
         elem = elem.offsetParent
       }
 
@@ -64,6 +71,7 @@ export default {
       this.$refs.selector.style.left = this.dimensions.left - 2 + 'px'
       this.$refs.selector.style.width = this.dimensions.width + 'px'
       this.$refs.selector.style.height = this.dimensions.height + 'px'
+
     },
 
     // TODO: Integrate shooter with selector

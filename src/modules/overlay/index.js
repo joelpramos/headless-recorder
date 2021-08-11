@@ -67,9 +67,16 @@ export default class Overlay {
       this.selectorApp.scrolling = true
       window.clearTimeout(this.isScrolling)
       this.isScrolling = setTimeout(() => (this.selectorApp.scrolling = false), 66)
+      if (this.selectorApp.element) {
+        this.selectorApp.moveElement(this.selectorApp.element)
+      }
     }
 
     window.document.addEventListener('mouseover', this.mouseOverEvent)
+    // sometimes the scroll is within the document and/or within a div of the doc (e.g. a static fixed header, body div will have scroll)
+    window.document
+      .querySelectorAll('*')
+      .forEach(element => element.addEventListener('scroll', this.scrollEvent))
     window.addEventListener('scroll', this.scrollEvent, false)
   }
 
