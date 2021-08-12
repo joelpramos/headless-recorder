@@ -44,6 +44,7 @@ export default class KarateCodeGenerator extends BaseGenerator {
 
     if (!events) return result
 
+    var previousEvent = undefined
     for (let event of events) {
       const { action, selector, value, href, keyCode, tagName, frameId, frameUrl } = event
       const escapedSelector = selector ? selector.replace(/\\/g, '\\\\') : selector
@@ -51,10 +52,30 @@ export default class KarateCodeGenerator extends BaseGenerator {
       // we need to keep a handle on what frames events originate from
       this._setFrames(frameId, frameUrl)
 
+      // if there was a keydown event in an input and now the event is different
+      // populate the info
+      // exception is if the event is a click on the very same input box
+      if (
+        previousEvent !== undefined &&
+        previousEvent.action === eventsToRecord.KEYDOWN &&
+        previousEvent.tagName === 'INPUT' &&
+        (action !== eventsToRecord.KEYDOWN ||
+          (action === eventsToRecord.KEYDOWN && keyCode === 9)) &&
+        !(
+          action === eventsToRecord.CLICK &&
+          tagName === 'INPUT' &&
+          selector === previousEvent.selector
+        )
+      ) {
+        this._blocks.push(
+          this._handleKeyDown(previousEvent.selector.replace(/\\/g, '\\\\'), previousEvent.value)
+        )
+      }
+
       switch (action) {
-        case 'keydown':
+        case eventsToRecord.KEYDOWN:
           if (keyCode === this._options.keyCode) {
-            this._blocks.push(this._handleKeyDown(escapedSelector, value, keyCode))
+            this._blocks.push(this._handleKeyDown(escapedSelector, value))
           }
           break
         case 'click':
@@ -63,6 +84,8 @@ export default class KarateCodeGenerator extends BaseGenerator {
         case 'change':
           if (tagName === 'SELECT') {
             this._blocks.push(this._handleChange(escapedSelector, value))
+          } else if (tagName === 'INPUT') {
+            this._blocks.push(this._handleKeyDown(escapedSelector, value))
           }
           break
         case headlessActions.GOTO:
@@ -79,6 +102,8 @@ export default class KarateCodeGenerator extends BaseGenerator {
           this._blocks.push(this._handleScreenshot(value))
           break
       }
+
+      previousEvent = event
     }
 
     /* if (this._hasNavigation && this._options.waitForNavigation) {
@@ -168,14 +193,13 @@ export default class KarateCodeGenerator extends BaseGenerator {
     if (value) {
       return new Block(this._frameId, {
         type: headlessActions.SCREENSHOT,
-        value: `const element${this._screenshotCounter} = await page.$('${value}')
-await element${this._screenshotCounter}.screenshot({ path: 'screenshot_${this._screenshotCounter}.png' })`,
+        value: `* screenshot('${value}')`
       })
     }
 
     return new Block(this._frameId, {
       type: headlessActions.SCREENSHOT,
-      value: `await ${this._frame}.screenshot({ path: 'screenshot_${this._screenshotCounter}.png', fullPage: true })`,
+      value: `* screenshot()`,
     })
   }
 

@@ -17,6 +17,7 @@ export const eventsToRecord = {
   SUBMIT: 'submit',
   LOAD: 'load',
   UNLOAD: 'unload',
+  ONFOCUSOUT: 'onfocusout'
 }
 
 export const headlessTypes = {

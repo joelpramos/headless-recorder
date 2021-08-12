@@ -44,8 +44,8 @@ export default class BaseGenerator {
 
     if (!events) return result
 
-    for (let i = 0; i < events.length; i++) {
-      const { action, selector, value, href, keyCode, tagName, frameId, frameUrl } = events[i]
+    for (let event of events) {
+      const { action, selector, value, href, keyCode, tagName, frameId, frameUrl } = event
       const escapedSelector = selector ? selector?.replace(/\\/g, '\\\\') : selector
 
       // we need to keep a handle on what frames events originate from
@@ -65,6 +65,9 @@ export default class BaseGenerator {
             this._blocks.push(this._handleChange(escapedSelector, value))
           }
           break
+/*         case headlessActions.SELECT:
+          this._blocks.push(this._handleGoto(href, frameId))
+          break */
         case headlessActions.GOTO:
           this._blocks.push(this._handleGoto(href, frameId))
           break
