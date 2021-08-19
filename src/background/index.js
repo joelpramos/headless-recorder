@@ -70,6 +70,7 @@ class Background {
     chrome.runtime.onMessage.addListener(this.overlayHandler)
 
     chrome.webNavigation.onCompleted.addListener(this._boundedNavigationHandler)
+    //chrome.webNavigation.onHistoryStateUpdated.addListener(this._boundedNavigationHandler)
     chrome.webNavigation.onBeforeNavigate.addListener(this._boundedWaitHandler)
 
     badge.start()
@@ -196,7 +197,7 @@ class Background {
 
       browser.sendTabMessage({
         action: 'CODE',
-        value: !options?.code?.showPlaywrightFirst ? code.puppeteer : code.playwright,
+        value: !options?.code?.showPlaywrightFirst ? (options.code.showKarateFirst ? code.karate : code.puppeteer) : code.playwright,
       })
     }
 
